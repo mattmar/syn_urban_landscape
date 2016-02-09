@@ -57,7 +57,7 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
            cluster.size<-round(rtnorm(1,cluster.size,cluster.size.prob,lower=1, upper=n.rows*n.cols/2),0)
 
          if( i !=2 & along!=TRUE ) {
-          start=which(tail(state$occupied, 1)==matrix(seq(1,n),nrow=n.rows,ncol=n.cols,byrow=TRUE),arr.ind=T)
+          start=which(tail(state$occupied, 1)==matrix(seq(1,n),nrow=n.rows,ncol=n.cols,byrow=F),arr.ind=T)
         }
 
         if( along==TRUE & exists("along.value") ) {

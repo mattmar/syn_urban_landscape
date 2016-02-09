@@ -46,20 +46,20 @@ mm4[mm == -1] <- -1
 mm4[mm2 == -999 | mm3 > 2] <- -999
 
 #Add houses along the roads
-houses_road<-multiexpand(mm4,50,cluster.size=8,0,c(n.rows/2,n.cols/2),50000,50,c(50,50),mode="ca",nbr.matrix=nn8,along=TRUE,along.value=-999)
+houses_road<-multiexpand(mm4,5000,cluster.size=9,0,c(n.rows/2,n.cols/2),50000,1,c(5,5),mode="ca",nbr.matrix=nn8,along=TRUE,along.value=-999)
 
 mm5 <- matrix(1, n.rows, n.cols)
 mm5[mm4 == -999 ] <- -1
 mm5[mm4 == -1 | houses_road>2] <- -1
 
 #Big public green areas
-green_park<-multiexpand(mm4,3,cluster.size=10000,1,c(n.rows/2,n.cols/2),50000,0,c(500,500),mode="px",nbr.matrix=nn8)
+green_park<-multiexpand(mm5,3,cluster.size=10000,1,c(n.rows/2,n.cols/2),50000,0,c(500,500),mode="px",nbr.matrix=nn8)
 
 mm6 <- matrix(1, n.rows, n.cols)
 mm6[mm5 == -1 | houses_road > 2 | green_park > 2] <- -1
 
 #Small filling houses
-houses_isolated<-multiexpand(mm6,10000,cluster.size=25,cluster.size.prob=0,start=c(50,400),count.max=100000,range=5,contiguity=c(5,5),mode="ca",nbr.matrix=nn24)
+houses_isolated<-multiexpand(mm6,5000,cluster.size=25,cluster.size.prob=0,start=c(450,300),count.max=100000,range=2,contiguity=c(3,3),mode="ca",nbr.matrix=nn24)
 
 mm7 <- matrix(1, n.rows, n.cols)
 mm7[mm6 == -1 | houses_road > 2 | green_park > 2 | houses_isolated >2] <- -1
