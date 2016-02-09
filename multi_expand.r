@@ -56,7 +56,7 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
 
            cluster.size<-round(rtnorm(1,cluster.size,cluster.size.prob,lower=1, upper=n.rows*n.cols/2),0)
 
-         if( i !=2 ) {
+         if( i !=2 & along!=TRUE ) {
           start=which(tail(state$occupied, 1)==matrix(seq(1,n),nrow=n.rows,ncol=n.cols,byrow=TRUE),arr.ind=T)
         }
 
@@ -69,7 +69,7 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
         if( all(start<=1) & any(contiguity + add_sd==0 )) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
           start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd, lower=1, upper=min(dim(x))+1),0) #start seed from TND
-        matrix_start_coords <- matrix(cells.left,nrow=n.rows,ncol=n.cols,byrow=TRUE)
+        matrix_start_coords <- matrix(cells.left,nrow=n.rows,ncol=n.cols,byrow=FALSE)
 
         if(debug==1){
           print(paste("bench_2: 1st loop","fc",length(fc),"cluster size",cluster.size-1,"count.max", count.max,start_coords[1],start_coords[2]),cells.left)

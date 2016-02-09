@@ -46,7 +46,7 @@ mm4[mm == -1] <- -1
 mm4[mm2 == -999 | mm3 > 2] <- -999
 
 #Add houses along the roads
-houses_road<-multiexpand(mm4,1000,cluster.size=8,0,c(n.rows/2,n.cols/2),50000,50,c(50,50),mode="ca",nbr.matrix=nn8,along=TRUE,along.value=-999)
+houses_road<-multiexpand(mm4,50,cluster.size=8,0,c(n.rows/2,n.cols/2),50000,50,c(50,50),mode="ca",nbr.matrix=nn8,along=TRUE,along.value=-999)
 
 mm5 <- matrix(1, n.rows, n.cols)
 mm5[mm4 == -999 ] <- -1
@@ -123,3 +123,5 @@ mode="ca"
 nbr.matrix=nn8
 along.value=-999
 ynnoise=1
+along=T
+debug=1
