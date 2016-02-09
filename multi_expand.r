@@ -1,29 +1,37 @@
-multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,count.max,range=1,contiguity,mode="pixel",nbr.matrix=matrix(c(-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1), nrow=2),xnnoise=0, ynnoise=0, along=FALSE, along.value=0, debug=0) {
+multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,count.max,range=1,contiguity,mode="px",nbr.matrix=matrix(c(-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1), nrow=2),xnnoise=0, ynnoise=0, along=FALSE, along.value=0, debug=0) {
 
 #Required packages
   require(msm)
 
-#Prepare output matrices and temporary vectors
+#Prepare output objects and temporary vectors
+  n.rows <<- dim(x)[1]
+  n.cols <<- dim(x)[2]
+  nbrhood <- nbr.matrix
   n <- n.rows * n.cols
   cells.left <- 1:n
-  cells.left[x!=1 | x==-999] <- -1 # Occupancy of cells
-  i <- 2
-  indices <- c()
+  cells.left[x!=1 | x==along.value] <- -1 # Occupancy of cells
+  i <- 2 # index for cluester.size comparison
+  indices <- c() # vector for occupied cells
   ids <- c()
   out <- matrix(NA, n.rows, n.cols)
   busy_cells <- 0
   fc <- rep(NA,cluster.size)
-  state <- data.frame(occupied=which(x==-1 | x==-999))
+  state <- data.frame(occupied=which(x==-1 | x==along.value))
   add_sd_storage <- c()
-  h <- 1
+  h <- 1 # counter for synusoidal growth
+#
+# If `cells_selected` is missing
+#
+  if( missing(start) ) {
+    rst <- which(x==1,arr.ind=T)
+    start <- rst[sample(1:dim(rst)[1], 1),]
+  }
 
+#Start the loop
   while( i < cluster.number+2 && length(cells.left[x!=-1]) >= cluster.size && count.max > 1 ) {
 
-    if(count.max==2) print("No solution found to build the planned number of clusters")
+    if(count.max==2) break("No solution found to build the planned number of clusters")
 
-      if(debug==1){
-        print("bench_1: main loop")
-      }
 #
 #Check if cluster size exceed the limit
 #
@@ -35,113 +43,135 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
       cells_start <- cells.left[which(cells.left > 0)]
       cells_selected <- 0
 
-      while( cells_selected == 0 | length(fc) < cluster.size-1 & count.max > 1 ) {
+      if(debug==1 & i>2){
+        print(paste("bench_1: 1st loop","fc",length(fc),"cluster",cluster.size-1,"count.max", count.max,start[1],start[2],cells_selected))
+      }
+
+      while( cells_selected == 0 | length(fc) < cluster.size-1 & count.max > 0 ) {
 
         count.max <- count.max-1
-        if(count.max==1) print("No solution found")
+        if(count.max<2) next("No solution found: Seed coords constantly outside matrix extent or cluster size not respected")
 
-         cluster.size<-round(rtnorm(1,cluster.size,cluster.size.prob,lower=1, upper=n.rows*n.cols/2),0)
+         if( cluster.size<=1 & cluster.size.prob==0 ) stop("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
-       if( i !=2 ) {
-        start=which(tail(state$occupied, 1)==matrix(seq(1,n),nrow=n.rows,ncol=n.cols,byrow=TRUE),arr.ind=T)
-      }
+           cluster.size<-round(rtnorm(1,cluster.size,cluster.size.prob,lower=1, upper=n.rows*n.cols/2),0)
 
-      if( along==TRUE & exists("along.value") ) {
-        start=rev(which(x==along.value,arr.ind=T)[sample(1:length(which(x==along.value)),range),])
-      }
+         if( i !=2 ) {
+          start=which(tail(state$occupied, 1)==matrix(seq(1,n),nrow=n.rows,ncol=n.cols,byrow=TRUE),arr.ind=T)
+        }
 
-      if(debug==1){
-        print(paste("bench_2: 1st loop","fc",length(fc),"cluster",cluster.size-1,"count.max", count.max))
-      }
-      add_sd <- rbinom(1,10,1/log(ifelse(count.max<2,2,count.max),2))
-      start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd, lower=1, upper=min(dim(x))),0) #Randomly picking
-      matrix_start_coords <- matrix(cells.left,nrow=n.rows,ncol=n.cols,byrow=TRUE)
-      add_sd_storage <- append(add_sd_storage,add_sd)
+        if( along==TRUE & exists("along.value") ) {
+          start=rev(which(x==along.value,arr.ind=T)[sample(1:length(which(x==along.value)),range),])
+        }
 
-      while(start_coords[1]+range > dim(x)[1] | start_coords[2]+range > dim(x)[2] | start_coords[1]-range <= 0 | start_coords[2]-range <= 0 & count.max>1) {
+        add_sd <- rbinom(1,10,1/log(ifelse(count.max<2,2,count.max),2))
+
+        if( all(start<=1) & any(contiguity + add_sd==0 )) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
+
+          start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd, lower=1, upper=min(dim(x))+1),0) #start seed from TND
+        matrix_start_coords <- matrix(cells.left,nrow=n.rows,ncol=n.cols,byrow=TRUE)
 
         if(debug==1){
-         print(paste("bench_3: 3rd loop","fc",length(fc),"cluster",cluster.size-1,"range",range))
-       }
-#
-# When the seed gets stuck in a not valid coordinates, apply a further standard deviation to the folded normal distribution to find valid coordinates; the additional standard deviation is function of the iteration number count.max
-#
-       count.max <- count.max-1
-       add_sd1 <- rbinom(1,5,1/log(ifelse(count.max<2,2,count.max), 2))
-       start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd1, lower=1, upper=min(dim(x))),0)
-     }
+          print(paste("bench_2: 1st loop","fc",length(fc),"cluster size",cluster.size-1,"count.max", count.max,start_coords[1],start_coords[2]),cells.left)
+        }
 
-     cells_selected <- matrix_start_coords[(start_coords[1]-range):(start_coords[1]+range),(start_coords[2]-range):(start_coords[2]+range)] #Neighborhood cell_selected
-     cells_selected<-cells_selected[cells_selected>0]
+#
+# Check if seeds range is outside x
+#
+        while( count.max>0 & start_coords[1]+range > dim(x)[1] | start_coords[2]+range > dim(x)[2] | start_coords[1]-range <= 0 | start_coords[2]-range <= 0 ) {
+
+          if(debug==1){
+           print(paste("bench_3: 3rd loop","fc",length(fc),"cluster",cluster.size-1,"range",range, "start coords:",start_coords[1],start_coords[2],"count max",count.max))
+         }
+#
+# If the seed gets stuck in not valid coordinates, apply a further sd to the folded normal distribution to help finding valid coordinates; the additional sd is function of count.max
+#
+         count.max <- count.max-1
+
+         if(count.max<2) break("No solution found: Seed coords constantly outside matrix extent")
+
+           add_sd1 <- rbinom(1,5,1/log(ifelse(count.max<2,2,count.max), 2))
+
+         if( all(start<=1) & any(contiguity + add_sd1==0) ) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
+
+           start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd1, lower=1, upper=min(dim(x))+1),0)
+       }
+
+       cells_selected <- matrix_start_coords[(start_coords[1]-range):(start_coords[1]+range),(start_coords[2]-range):(start_coords[2]+range)] #Neighborhood cell_selected
+       cells_selected<-cells_selected[cells_selected>0]
 #
 #If range>0 randomly pick a seed cell in the neighborhood set
 #
-     if( length(cells_selected)==0 ) cells_selected<-0;
+       if( length(cells_selected)==0 ) cells_selected<-0;
 
-     if( length(cells_selected)>1 ){
-      cells_selected<- sample(cells_selected, 1)
-      start_coords<-which(cells_selected==matrix_start_coords,arr.ind=T)
+       if( length(cells_selected)>1 ){
+        cells_selected<- sample(cells_selected, 1)
+        start_coords<-which(cells_selected==matrix_start_coords,arr.ind=T)
+      }
+#
+# If ca then cluster.size must be respected
+#
+      if( mode=="ca" & cluster.size.prob==0 ){
+        fc <- c((cells_selected-1)%%n.rows+1, floor((cells_selected-1)/n.rows+1)) + nbr.matrix
+        fc <- fc[, fc[1,] >= 1 & fc[2,] >= 1 & fc[1,] <= n.rows & fc[2,] <= n.cols,
+        drop=FALSE]
+        fc <- fc[1,] + (fc[2,]-1)*n.rows
+        fc <- fc[matrix_start_coords[fc]!=-1]
+        fc <- setdiff(fc,state$occupied)
+      } else {fc <- rep(0,cluster.size-1)
     }
-
-    if( mode=="ca" & cluster.size.prob==0 ){
-      fc <- c((cells_selected-1)%%n.rows+1, floor((cells_selected-1)/n.rows+1)) + nbr.matrix
-      fc <- fc[, fc[1,] >= 1 & fc[2,] >= 1 & fc[1,] <= n.rows & fc[2,] <= n.cols,
-      drop=FALSE]
-      fc <- fc[1,] + (fc[2,]-1)*n.rows
-      fc <- fc[matrix_start_coords[fc]!=-1]
-      fc <- setdiff(fc,state$occupied)
-    } else {fc <- rep(0,cluster.size-1)
   }
-}
+
+  if(count.max<2) break("No solution found: Seed coords constantly outside matrix extent")
 
 #
 #Expand a patch randomly within indicator array `x` (1=unoccupied) by `cluster.size` cells beginning at index `start_coords`.
 #
-if( length(cells_selected)>0 && x[cells_selected] != 1 ) stop("Attempting to begin on an unoccupied cell")
-  n.rows <- dim(x)[1]
-n.cols <- dim(x)[2]
-nbrhood <- nbr.matrix
 #
 #Adjoin one more random cell and update `state`, which records (1) the immediately available cells and (2) already occupied cells.
 #
-grow <- function(state,cells_selected) {
+    grow <- function(state,cells_selected) {
 #
 # Find all available neighbors that lie within the extent of `x` and
 # are unoccupied.
 #
 
-  neighbors <- function(i) {
+      neighbors <- function(i) {
 
-    if( xnnoise>0 | ynnoise>0 ){
-      nbr <- as.matrix(nbrhood[,nbrhood[1,]>=0 & nbrhood[2,]>=0])
-    }
+#
+# In case of syn growth
+#
+        if( xnnoise>0 | ynnoise>0 ){
+          nbr <- as.matrix(nbrhood[,nbrhood[1,]>=0 & nbrhood[2,]>=0])
+        }
 
-    if( ynnoise>0 ){
-      n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbr # extract nn matrix
-      noise<-round(ifelse(ynnoise_r>0, 1 + exp(ynnoise_r*h/h) * sin(h),0))
-      noise<-ifelse(noise>1,1,ifelse(noise<-1,-1))
-      n[1,] <- if(rbinom(1,1,0.50)==0) {
-        n[1,] + noise
-      } else{n[1,] - noise # add synusoidal noise
-    }
-  } else {
-    if( xnnoise>0 ) {
-      n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbr # extract nn matrix
-      noise<-round(ifelse(xnnoise_r>0, 1 + exp(xnnoise_r*h/h) * sin(h),0))
-      noise<-ifelse(noise>1,1,ifelse(noise<-1,-1))
-      n[2,] <- if(rbinom(1,1,0.50)==0) {
-        n[2,] + noise
-      } else{n[2,] - noise # add synusoidal noise
-    }
-  } else { n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbrhood # extract nn matrix
-}}
-n <- n[, n[1,] >= 1 & n[2,] >= 1 & n[1,] <= n.rows & n[2,] <= n.cols,
-drop=FALSE]             # Remain inside the extent of `x`.
-n <- n[1,] + (n[2,]-1)*n.rows  # Convert to *vector* indexes into `x`.
-n <- n[x[n]==1]                # Stick to valid cells in `x`.
-n <- setdiff(n, state$occupied)# Remove any occupied cells.
+        if( ynnoise>0 ){
+          n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbr # extract nn matrix
+          noise<-round(ifelse(ynnoise_r>0, 1 + exp(ynnoise_r*h/h) * sin(h),0))
+          noise<-ifelse(noise>1,1,ifelse(noise<-1,-1))
+          n[1,] <- if(rbinom(1,1,0.50)==0) {
+            n[1,] + noise
+          } else{n[1,] - noise # add synusoidal noise
+        }
+      } else {
+        if( xnnoise>0 ) {
+          n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbr # extract nn matrix
+          noise<-round(ifelse(xnnoise_r>0, 1 + exp(xnnoise_r*h/h) * sin(h),0))
+          noise<-ifelse(noise>1,1,ifelse(noise<-1,-1))
+          n[2,] <- if(rbinom(1,1,0.50)==0) {
+            n[2,] + noise
+          } else{n[2,] - noise # add synusoidal noise
+        }
+      } else { n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbrhood
+    } # extract nn matrix
+  }
 
-return (n)
+  n <- n[, n[1,] >= 1 & n[2,] >= 1 & n[1,] <= n.rows & n[2,] <= n.cols, drop=FALSE] # Remain inside the extent of `x`.
+  n <- n[1,] + (n[2,]-1)*n.rows  # Convert to *vector* indexes into `x`.
+  n <- n[x[n]==1] # Stick to valid cells in `x`.
+  n <- setdiff(n, state$occupied)# Remove any occupied cells.
+
+  return (n)
 }
 #
 # Select one available cell uniformly at random.
@@ -163,7 +193,7 @@ if( mode=="ca" ){
     occupied = c(state$occupied, a)))
 }
 
-if(mode=="pixel"){
+if( mode=="px" ){
   j <- ceiling(runif(1) * length(state$available))
   a <- state$available[j]
   return(list(index=a,
@@ -171,16 +201,6 @@ if(mode=="pixel"){
     occupied = c(state$occupied, a)))
 }
 }
-#
-# Initialize the state.
-# (If `cells_selected` is missing, choose a value at random.)
-#
-if(missing(cells_selected)) {
-  indexes <- 1:(n.rows * n.cols)
-  indexes <- indexes[x[indexes]==1]
-  cells_selected <- sample(indexes, 1)
-}
-
 
 state <- list(available=cells_selected, occupied=busy_cells)
 #
@@ -192,10 +212,10 @@ while( length(state$available) >= 1 && a <= cluster.size ) {
   xnnoise_r <- runif(1,0,xnnoise)
   ynnoise_r <- runif(1,0,ynnoise)
 
-  h <- h+1
+  h <- h+1 # counter for syn
   state <- grow(state,cells_selected)
   indices.c[a] <- state$index
-  a <- a+1
+  a <- a+1 # index for cluster size comparison
   count.max <- count.max-0.5
 
   if( debug==1 ) {
@@ -209,6 +229,9 @@ indices.c <- indices.c[!is.na(indices.c)]
 y <- matrix(NA, n.rows, n.cols)
 y[indices.c] <- 1:length(indices.c)
 
+#
+# If not syn growth set then check if the cluster respects cluster.size
+#
 if(xnnoise==0 & ynnoise==0){
   if ( length(y[!is.na(y)])==cluster.size ) {
     i <- i+1
@@ -219,7 +242,7 @@ if(xnnoise==0 & ynnoise==0){
     cat(paste(i-2,"cluster(s) created. Cluster size=",cluster.size,"x=",start_coords[1],"y=",start_coords[2],length(which(cells.left>0)),"cells unoccupied \n", sep=" "))
 
   } else {
-   print("No cluster created. Cluster smaller than cluster.size. Jumping to the next iteration")
+   next("No cluster created. Cluster smaller than cluster.size. Jumping to the next iteration")
    count.max <- count.max-1
  }
 } else {
@@ -230,18 +253,18 @@ if(xnnoise==0 & ynnoise==0){
   count.max <- count.max -1
   cat(paste(i-2,"cluster(s) created. Cluster size=",length(y[!is.na(y)]),"x=",start_coords[1],"y=",start_coords[2],length(which(cells.left>0)),"cells unoccupied \n", sep=" "))
 }
-
 #
-#Check if the left cells are enough for a cluster
+#Check if the left cells are enough for the next cluster
 #
 if( length(which(cells.left!=-1))<=cluster.size ) {
   break(paste("Unoccupied cells are not enough","only",i-2,"cluster(s) created out of",cluster.size,"\n",sep=" "))
   i=cluster.number
   count.max <- count.max-1
 }
+
 busy_cells<-indices
 }
 out[indices] <- ids
-# return(list(out,add_sd_storage))
+out[out %in% NA] <- 1
 return(out)
 }
