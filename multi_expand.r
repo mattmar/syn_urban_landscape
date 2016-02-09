@@ -61,7 +61,7 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
         }
 
         if( along==TRUE & exists("along.value") ) {
-          start=rev(which(x==along.value,arr.ind=T)[sample(1:length(which(x==along.value)),range),])
+          start=which(x==along.value,arr.ind=T)[sample(1:length(which(x==along.value)),range),]
         }
 
         add_sd <- rbinom(1,10,1/log(ifelse(count.max<2,2,count.max),2))
