@@ -1,9 +1,23 @@
-multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,count.max,range=1,contiguity,mode="px",nbr.matrix=matrix(c(-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1), nrow=2),xnnoise=0, ynnoise=0, along=FALSE, along.value=0, debug=0) {
+multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,count.max,range=1,contiguity,mode="px",nbr.matrix="nn8",xnnoise=-1, ynnoise=-1, along=FALSE, along.value=0, debug=0) {
 
 #Required packages
   require(msm)
 
-#Prepare output objects and temporary vectors
+#Neighboroud matrices
+  if(nbr.matrix=="nn2y") {
+    nbr.matrix <- matrix(c(0,-1, 0,1), nrow=2)
+  } else if(nbr.matrix=="nn2x") {
+    nbr.matrix <- matrix(c(-1,0, 1,0), nrow=2)
+  } else if(nbr.matrix=="nn8") {
+    nbr.matrix <- matrix(c(-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1), nrow=2)
+  } else if(nbr.matrix=="nn14") {
+    nbr.matrix <- matrix(c(-2,-1, -2,0, -2,1, -1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1, 2,-1, 2,0, 2,1), nrow=2)
+  } else if(nbr.matrix=="nn24") {
+    nbr.matrix <- matrix(c(-2,-2, -2,-1, -2,0, -2,1, -2,2, -1,-2, -1,-1, -1,0, -1,1, -1,2, 0,-2, 0,-1, 0,1, 0,2, 1,-2, 1,-1, 1,0, 1,1, 1,2, 2,-2, 2,-1, 2,0, 2,1, 2,2), nrow=2)
+  } else
+  stop("provide a known nn matrix")
+
+#Prepare output objects and temporarya vectors
   n.rows <<- dim(x)[1]
   n.cols <<- dim(x)[2]
   nbrhood <- nbr.matrix
@@ -47,10 +61,14 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
         print(paste("bench_1: 1st loop","fc",length(fc),"cluster",cluster.size-1,"count.max", count.max,start[1],start[2],cells_selected))
       }
 
+      std_c<-10000
+
       while( cells_selected == 0 | length(fc) < cluster.size-1 & count.max > 0 ) {
 
         count.max <- count.max-1
-        if(count.max<2) next("No solution found: Seed coords constantly outside matrix extent or cluster size not respected")
+        std_c <- std_c - 10
+
+        if(std_c==1 ) break("No solution found: Seed coords constantly outside matrix extent or cluster size not respected")
 
          if( cluster.size<=1 & cluster.size.prob==0 ) stop("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
@@ -64,33 +82,40 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
           start=which(x==along.value,arr.ind=T)[sample(1:length(which(x==along.value)),range),]
         }
 
-        add_sd <- rbinom(1,10,1/log(ifelse(count.max<2,2,count.max),2))
+        add_sd <- rbinom(1,50,1/log(ifelse(std_c<2,2,std_c),2))
 
         if( all(start<=1) & any(contiguity + add_sd==0 )) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
           start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd, lower=1, upper=min(dim(x))+1),0) #start seed from TND
+
+        # if( all(start<=1) & any(contiguity==0) ) break("Mean<=1 and sd=0; impossible to draw values from rtnorm")
+
+        #   start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity, lower=1, upper=min(dim(x))+1),0) #start seed from TND
+
         matrix_start_coords <- matrix(cells.left,nrow=n.rows,ncol=n.cols,byrow=FALSE)
 
         if(debug==1){
-          print(paste("bench_2: 1st loop","fc",length(fc),"cluster size",cluster.size-1,"count.max", count.max,start_coords[1],start_coords[2]),cells.left)
+          print(paste("bench_2: 1st loop","fc",length(fc),"c size:",cluster.size-1,"count max: ",count.max, "count std: ",std_c, "start coords: ",start_coords[1],start_coords[2]))
         }
 
 #
 # Check if seeds range is outside x
 #
+        std_c1 <- 10000
         while( count.max>0 & start_coords[1]+range > dim(x)[1] | start_coords[2]+range > dim(x)[2] | start_coords[1]-range <= 0 | start_coords[2]-range <= 0 ) {
 
           if(debug==1){
-           print(paste("bench_3: 3rd loop","fc",length(fc),"cluster",cluster.size-1,"range",range, "start coords:",start_coords[1],start_coords[2],"count max",count.max))
+           print(paste("bench_3: 3rd loop","fc",length(fc),"cluster",cluster.size-1,"range",range, "start coords:",start_coords[1],start_coords[2],"std_c1",std_c1))
          }
 #
 # If the seed gets stuck in not valid coordinates, apply a further sd to the folded normal distribution to help finding valid coordinates; the additional sd is function of count.max
 #
-         count.max <- count.max-1
+         count.max <- count.max - 1
+         std_c1 <- std_c1 - 1
 
-         if(count.max<2) break("No solution found: Seed coords constantly outside matrix extent")
+         if( count.max<2 | std_c1==1 ) break("No solution found: Seed coords constantly outside matrix extent")
 
-           add_sd1 <- rbinom(1,5,1/log(ifelse(count.max<2,2,count.max), 2))
+           add_sd1 <- rbinom(1,5,1/log(ifelse(count.max<2,2,std_c1), 2))
 
          if( all(start<=1) & any(contiguity + add_sd1==0) ) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
@@ -141,20 +166,20 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
 #
 # In case of syn growth
 #
-        if( xnnoise>0 | ynnoise>0 ){
+        if( xnnoise> -1 | ynnoise> -1 ){
           nbr <- as.matrix(nbrhood[,nbrhood[1,]>=0 & nbrhood[2,]>=0])
         }
 
-        if( ynnoise>0 ){
+        if( ynnoise> -1 ){
           n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbr # extract nn matrix
-          noise<-round(ifelse(ynnoise_r>0, 1 + exp(ynnoise_r*h/h) * sin(h),0))
+          noise<-round(ifelse(ynnoise_r> -1, 1 + exp(ynnoise_r*h/h) * sin(h),0))
           noise<-ifelse(noise>1,1,ifelse(noise<-1,-1))
           n[1,] <- if(rbinom(1,1,0.50)==0) {
             n[1,] + noise
           } else{n[1,] - noise # add synusoidal noise
         }
       } else {
-        if( xnnoise>0 ) {
+        if( xnnoise> -1 ) {
           n <- c((i-1)%%n.rows+1, floor((i-1)/n.rows+1)) + nbr # extract nn matrix
           noise<-round(ifelse(xnnoise_r>0, 1 + exp(xnnoise_r*h/h) * sin(h),0))
           noise<-ifelse(noise>1,1,ifelse(noise<-1,-1))
@@ -209,10 +234,10 @@ state <- list(available=cells_selected, occupied=busy_cells)
 a <- 1
 indices.c <- c(NA, cluster.size)
 while( length(state$available) >= 1 && a <= cluster.size ) {
-  xnnoise_r <- runif(1,0,xnnoise)
-  ynnoise_r <- runif(1,0,ynnoise)
 
-  h <- h+1 # counter for syn
+  if(xnnoise > -1 | ynnoise > -1){ xnnoise_r <- runif(1,0,xnnoise); ynnoise_r <- runif(1,0,ynnoise)}
+
+    h <- h+1 # counter for syn
   state <- grow(state,cells_selected)
   indices.c[a] <- state$index
   a <- a+1 # index for cluster size comparison
