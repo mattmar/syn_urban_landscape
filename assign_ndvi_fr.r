@@ -16,7 +16,7 @@ fr_ndvi<-raster(mmndvi[n.rows:1,], xmx=n.cols, ymx=n.rows)
 crs(fr_lulc)<-"+proj=utm  +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
 
 #Plot landscape and ndvi
-png("~/Desktop/urb_land_aggregate.png",width = 300, height = 300, units="mm",res=300,pointsize=10)
+png("~/Desktop/fresno.png",width = 300, height = 300, units="mm",res=300,pointsize=10)
 par(mfrow=c(2,1),mar = c(5,3,5,7))
 raster::plot(fr_lulc,breaks=c(0.9,1.9,2.9,3.9,4.9,5.9,6.9,7.9),col=c("brown","black","grey85","grey80","grey75","dark green","light green"),legend=FALSE,useRaster=TRUE,main="FR simulated classified",cex.main=2)
 
@@ -25,5 +25,5 @@ raster::plot(fr_lulc, legend.only=TRUE, col=c("black","blue","grey95","grey90","
 raster::plot(fr_ndvi,main="FR simulated NDVI",cex.main=2)
 dev.off()
 
-writeRaster(fr_lulc,"~/Desktop/PhD/topics/urban_veg_albo/syn_matrices/syn_lulc_fr",format="GTiff")
-writeRaster(sf_ndvi,"~/Desktop/PhD/topics/urban_veg_albo/syn_matrices/syn_ndvi_fr",format="GTiff")
+writeRaster(fr_lulc,"~/Desktop/PhD/topics/urban_veg_albo/syn_matrices/syn_lulc_fr",format="GTiff",overwrite=TRUE)
+writeRaster(fr_ndvi,"~/Desktop/PhD/topics/urban_veg_albo/syn_matrices/syn_ndvi_fr",format="GTiff",overwrite=TRUE)
