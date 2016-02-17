@@ -1,4 +1,4 @@
-multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,count.max,range=1,contiguity,mode="px",nbr.matrix="nn8",xnnoise=-1, ynnoise=-1, along=FALSE, along.value=0, debug=0) {
+multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, start, count.max, range=1,contiguity, mode="px", nbr.matrix="NA", ww=5, xnnoise=-1, ynnoise=-1, along=FALSE, along.value=0, debug=0) {
 
 #Required packages
   require(msm)
@@ -8,14 +8,12 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
     nbr.matrix <- matrix(c(0,-1, 0,1), nrow=2)
   } else if(nbr.matrix=="nn2x") {
     nbr.matrix <- matrix(c(-1,0, 1,0), nrow=2)
-  } else if(nbr.matrix=="nn8") {
-    nbr.matrix <- matrix(c(-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1), nrow=2)
-  } else if(nbr.matrix=="nn14") {
-    nbr.matrix <- matrix(c(-2,-1, -2,0, -2,1, -1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1, 2,-1, 2,0, 2,1), nrow=2)
-  } else if(nbr.matrix=="nn24") {
-    nbr.matrix <- matrix(c(-2,-2, -2,-1, -2,0, -2,1, -2,2, -1,-2, -1,-1, -1,0, -1,1, -1,2, 0,-2, 0,-1, 0,1, 0,2, 1,-2, 1,-1, 1,0, 1,1, 1,2, 2,-2, 2,-1, 2,0, 2,1, 2,2), nrow=2)
-  } else
-  stop("provide a known nn matrix")
+  } else if(ww!=0 & ww%%2==0) {
+    nbr.matrix.raw <- matrix(1,nrow=ww,ncol=ww)
+    nbr.matrix <- rbind((which(nbr.matrix.raw==1,arr.ind=T)-(ww/2))[,1],(which(nbr.matrix.raw==1,arr.ind=T)-(ww/2))[,2])
+  } else {
+    stop("provide a known nn matrix or an even window size")
+  }
 
 #Prepare output objects and temporarya vectors
   n.rows <<- dim(x)[1]
@@ -33,6 +31,8 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
   state <- data.frame(occupied=which(x==-1 | x==along.value))
   add_sd_storage <- c()
   h <- 1 # counter for synusoidal growth
+  cluster.size.i<-cluster.size
+
 #
 # If `cells_selected` is missing
 #
@@ -40,8 +40,9 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
     rst <- which(x==1,arr.ind=T)
     start <- rst[sample(1:dim(rst)[1], 1),]
   }
-
+#
 #Start the loop
+#
   while( i < cluster.number+2 && length(cells.left[x!=-1]) >= cluster.size && count.max > 1 ) {
 
     if(count.max==2) break("No solution found to build the planned number of clusters")
@@ -72,9 +73,9 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
 
          if( cluster.size<=1 & cluster.size.prob==0 ) stop("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
-           cluster.size<-round(rtnorm(1,cluster.size,cluster.size.prob,lower=1, upper=n.rows*n.cols/2),0)
+          cluster.size<-round(rtnorm(1,cluster.size.i,cluster.size.prob,lower=1, upper=n.rows*n.cols/2),0)
 
-         if( i !=2 & along!=TRUE ) {
+        if( i !=2 & along!=TRUE ) {
           start=which(tail(state$occupied, 1)==matrix(seq(1,n),nrow=n.rows,ncol=n.cols,byrow=F),arr.ind=T)
         }
 
@@ -137,7 +138,7 @@ multiexpand <- function(x,cluster.number,cluster.size,cluster.size.prob=0,start,
 # If ca then cluster.size must be respected
 #
       if( mode=="ca" & cluster.size.prob==0 ){
-        fc <- c((cells_selected-1)%%n.rows+1, floor((cells_selected-1)/n.rows+1)) + nbr.matrix
+        fc <- c((cells_selected-1)%%n.rows+1, floor((cells_selected-1)/n.rows+1)) + nbrhood
         fc <- fc[, fc[1,] >= 1 & fc[2,] >= 1 & fc[1,] <= n.rows & fc[2,] <= n.cols,
         drop=FALSE]
         fc <- fc[1,] + (fc[2,]-1)*n.rows
@@ -237,7 +238,7 @@ while( length(state$available) >= 1 && a <= cluster.size ) {
 
   if(xnnoise > -1 | ynnoise > -1){ xnnoise_r <- runif(1,0,xnnoise); ynnoise_r <- runif(1,0,ynnoise)}
 
-    h <- h+1 # counter for syn
+  h <- h+1 # counter for syn
   state <- grow(state,cells_selected)
   indices.c[a] <- state$index
   a <- a+1 # index for cluster size comparison

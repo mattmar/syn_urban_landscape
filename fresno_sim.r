@@ -10,7 +10,7 @@ mm2<-roadsim(mm1,n.cols,n.rows,-1,method="column",sl=0,fr=0.2,scaling=0.15,incre
 mm3<-roadsim(mm2,n.cols,n.rows,-1,method="column",sl=0,fr=0,scaling=0.9,increase=3)
 
 #Add big public green areas
-green_park<-multiexpand(mm3,2,cluster.size=5000,100,c(n.rows/2,n.cols/2),50000,100,c(100,100),mode="px",nbr.matrix="nn24")
+green_park<-multiexpand(mm3,2,cluster.size=5000,100,c(n.rows/2,n.cols/2),50000,100,c(100,100),mode="px",nbr.matrix="nn8")
 
 mm3b <- matrix(1, n.rows, n.cols)
 mm3b[mm3 == -1 | green_park > 2] <- -1

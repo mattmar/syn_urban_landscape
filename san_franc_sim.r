@@ -1,7 +1,7 @@
 #Built a simple matrix
 n.rows <- 500
 n.cols <- 500
-mm <- matrix(1, n.rows, n.cols)
+mm <- matrix(1, 500, 500)
 
 #Add landscape shapes
 #Roads and river
@@ -38,14 +38,19 @@ mm9 <- matrix(1, n.rows, n.cols)
 mm9[mm7e == -1 | mm7e == -999 | mm8 > 2] <- -1
 
 #Big public green areas
-green_park<-multiexpand(mm9,4,cluster.size=5000,100,c(n.rows/2,n.cols/2),50000,100,c(500,500),mode="px",nbr.matrix="nn8")
+green_park<-multiexpand(mm9,50,cluster.size=350,350,c(n.rows/2,n.cols/2),50000,200,c(5000,5000),mode="ca",ww=16)
+
+mm9bis <- matrix(1, n.rows, n.cols)
+mm9bis[mm9 == -1| green_park > 2] <- -1
+
+green_park1<-multiexpand(mm9bis,2,cluster.size=10000,100,c(0,500),50000,100,c(200,200),mode="ca",ww=40)
 
 mm10 <- matrix(1, n.rows, n.cols)
-mm10[mm5 == -1 | green_park > 2] <- -1
+mm10[mm5 == -1 | green_park > 2 | green_park1 > 2] <- -1
 mm10[mm6 >2 | mm7b > 2 | mm7c == -999 | mm7e == -999 | mm8 > 2] <- -999
 
 #Add houses along the roads
-houses_road<-multiexpand(mm10,10000,cluster.size=9,0,c(n.rows/2,n.cols/2),50000,1,c(1,1),mode="ca",nbr.matrix="nn8",along=TRUE,along.value=-999)
+houses_road_b<-multiexpand(mm10,10000,cluster.size=36,0,c(n.rows/2,n.cols/2),50000,1,c(0.1,0.1),mode="ca",ww=6,along=TRUE,along.value=-999)
 
 mm11 <- matrix(1, n.rows, n.cols)
 mm11[mm10 == -1 ] <- -1
