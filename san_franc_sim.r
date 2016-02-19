@@ -49,49 +49,58 @@ mm10 <- matrix(1, n.rows, n.cols)
 mm10[mm5 == -1 | green_park > 2 | green_park1 > 2] <- -1
 mm10[mm6 >2 | mm7b > 2 | mm7c == -999 | mm7e == -999 | mm8 > 2] <- -999
 
-#Add houses along the roads
-houses_road_b<-multiexpand(mm10,10000,cluster.size=36,0,c(n.rows/2,n.cols/2),50000,1,c(0.1,0.1),mode="ca",ww=6,along=TRUE,along.value=-999)
+#Add houses along the roads big
+houses_road_b<-multiexpand(mm10,500,cluster.size=64,0,c(n.rows/2,n.cols/2),50000,1,c(0.1,0.1),mode="ca",ww=8,along=TRUE,along.value=-999)
 
 mm11 <- matrix(1, n.rows, n.cols)
 mm11[mm10 == -1 ] <- -1
-mm11[mm10 == -999 | houses_road > 2] <--999
+mm11[mm10 == -999 | houses_road_b > 2] <--999
 
-#Small filling houses
-houses_road_b<-multiexpand(mm11,1000,cluster.size=25,cluster.size.prob=0,start=c(n.rows/2,n.cols/2),count.max=100000,range=2,contiguity=c(5,5),mode="ca",nbr.matrix="nn24")
+#Add houses along the roads medium
+houses_road_m<-multiexpand(mm11,1000,cluster.size=36,cluster.size.prob=0,start=c(n.rows/2,n.cols/2),count.max=100000,range=1,contiguity=c(0.1,0.1),mode="ca", ww=6, along=TRUE, along.value=-999)
 
 mm12 <- matrix(1, n.rows, n.cols)
 mm12[mm11 == -1] <- -1
-mm12[mm11 == -999 | houses_road_b >2] <- -999
+mm12[mm11 == -999 | houses_road_m > 2] <- -1
 
-houses_road_s<-multiexpand(mm12,1000,cluster.size=15,0,start=c(n.rows/2,n.cols/2),50000,50,c(100,100),mode="ca",nbr.matrix="nn14",along=TRUE,along.value=-999)
+#Add houses along the roads small
+houses_road_s<-multiexpand(mm12,5000,cluster.size=16,0,start=c(n.rows/2,n.cols/2),500000,1,c(0.1,0.1),mode="ca", ww=4)
+
+mm12b <- matrix(1, n.rows, n.cols)
+mm12b[mm12 == -1] <- -1
+mm12b[mm12 == -999 | houses_road_s >2] <- -999
+
+#Add additional small houses if there are empty patches
+houses_road_sb<-multiexpand(mm12b,4000,cluster.size=16,0,start=c(150,350),50000,10,c(10,10),mode="ca", ww=4, along=TRUE, along.value=-999)
 
 mm13 <- matrix(1, n.rows, n.cols)
-mm13[mm9 == -1 | mm9 == -999] <- -1
-mm13[houses_road >2 | houses_road_b >2 | houses_road_s >2] <- -999
+mm13[mm10 == -1 | mm10 == -999] <- -1
+mm13[houses_road_b > 2 | houses_road_m > 2 | houses_road_s > 2 | houses_road_sb > 2] <- -999
 
 #Fill with green areas
-green_private<-multiexpand(mm13,5000,cluster.size=5,1,c(n.rows/2,n.cols/2),100000,50,c(50,50),mode="px",nbr.matrix="nn8",along=T,along.value=-999)
+green_private<-multiexpand(mm13,3000,cluster.size=5,1,c(n.rows/2,n.cols/2),100000,1,c(0.1,0.1),mode="px",ww=4,along=T,along.value=-999)
 
 mmf <- matrix(1, n.rows, n.cols)
 mmf[ which(green_private>2) ] <- 7
-mmf[ which(green_park>2) ] <- 6
-mmf[ which(houses_road > 2) ] <- 5
-mmf[ which(houses_road_b > 2) ] <- 4
+mmf[ which(green_park>2 | green_park1>2) ] <- 6
+mmf[ which(houses_road_b > 2) ] <- 5
+mmf[ which(houses_road_m > 2) ] <- 4
 mmf[ which(houses_road_s > 2) ] <- 3
+mmf[ which(houses_road_sb > 2) ] <- 3
 mmf[ which(mm9==-1 | mm9==-999) ] <- 2
 
 # Options
-cluster.number=1
-cluster.size=100
-cluster.size.prob=0
-start=c(n.rows/2,n.cols/2)
-count.max=2000
-range=1
-contiguity=c(5,5)
-x=mm
-mode="ca"
-nbr.matrix=nn8
-along.value=-999
-ynnoise=1
-along=T
-debug=1
+# cluster.number=1
+# cluster.size=100
+# cluster.size.prob=0
+# start=c(n.rows/2,n.cols/2)
+# count.max=2000
+# range=1
+# contiguity=c(5,5)
+# x=mm
+# mode="ca"
+# nbr.matrix=nn8
+# along.value=-999
+# ynnoise=1
+# along=T
+# debug=1

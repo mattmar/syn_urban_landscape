@@ -21,8 +21,8 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
   nbrhood <- nbr.matrix
   n <- n.rows * n.cols
   cells.left <- 1:n
-  cells.left[x!=1 | x==along.value] <- -1 # Occupancy of cells
-  i <- 2 # index for cluester.size comparison
+  cells.left[x!=1 | x==along.value] <- -1 # Occ of cells
+  i <- 2 # index for cluster.size comparison
   indices <- c() # vector for occupied cells
   ids <- c()
   out <- matrix(NA, n.rows, n.cols)
@@ -88,10 +88,6 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
         if( all(start<=1) & any(contiguity + add_sd==0 )) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
           start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd, lower=1, upper=min(dim(x))+1),0) #start seed from TND
-
-        # if( all(start<=1) & any(contiguity==0) ) break("Mean<=1 and sd=0; impossible to draw values from rtnorm")
-
-        #   start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity, lower=1, upper=min(dim(x))+1),0) #start seed from TND
 
         matrix_start_coords <- matrix(cells.left,nrow=n.rows,ncol=n.cols,byrow=FALSE)
 

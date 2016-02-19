@@ -17,6 +17,7 @@ mm3b[mm3 == -1 | green_park > 2] <- -1
 mm3b[mm1 == -1] <- -999
 
 #Minor roads
+set.seed(3003)
 mm3c<-roadsim(mm3b,n.rows,n.cols,-999,method="row",sl=0,fr=0,scaling=0.5)
 mm3d<-roadsim(mm3c,n.cols,n.rows,-1,method="column",sl=0,fr=0,scaling=0.5,increase=0)
 mm3e<-roadsim(mm3d,n.cols,n.rows,-1,method="column",sl=0,fr=0,scaling=0.7,increase=0)
