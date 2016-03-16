@@ -1,9 +1,11 @@
 multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, start, count.max, range=1,contiguity, mode="px", nbr.matrix="NA", ww=5, xnnoise=-1, ynnoise=-1, along=FALSE, along.value=0, debug=0) {
-
-#Required packages
+#
+##Required packages
+#
   require(msm)
-
-#Neighboroud matrices
+#
+##Neighboroud matrices
+#
   if(nbr.matrix=="nn2y") {
     nbr.matrix <- matrix(c(0,-1, 0,1), nrow=2)
   } else if(nbr.matrix=="nn2x") {
@@ -14,10 +16,11 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
   } else {
     stop("provide a known nn matrix or an even window size")
   }
-
-#Prepare output objects and temporarya vectors
-  n.rows <<- dim(x)[1]
-  n.cols <<- dim(x)[2]
+#
+##Prepare output objects and temporary vectors
+#
+  n.rows <<- nrow(x)
+  n.cols <<- ncol(x)
   nbrhood <- nbr.matrix
   n <- n.rows * n.cols
   cells.left <- 1:n
@@ -34,11 +37,11 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
   cluster.size.i<-cluster.size
 
 #
-# If `cells_selected` is missing
+##If `cells_selected` is missing
 #
   if( missing(start) ) {
     rst <- which(x==1,arr.ind=T)
-    start <- rst[sample(1:dim(rst)[1], 1),]
+    start <- rst[sample(1:nrow(rst), 1),]
   }
 #
 #Start the loop
@@ -94,12 +97,11 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
         if(debug==1){
           print(paste("bench_2: 1st loop","fc",length(fc),"c size:",cluster.size-1,"count max: ",count.max, "count std: ",std_c, "start coords: ",start_coords[1],start_coords[2]))
         }
-
 #
 # Check if seeds range is outside x
 #
         std_c1 <- 10000
-        while( count.max>0 & start_coords[1]+range > dim(x)[1] | start_coords[2]+range > dim(x)[2] | start_coords[1]-range <= 0 | start_coords[2]-range <= 0 ) {
+        while( count.max>0 & start_coords[1]+range > nrow(x) | start_coords[2]+range > ncol(x) | start_coords[1]-range <= 0 | start_coords[2]-range <= 0 ) {
 
           if(debug==1){
            print(paste("bench_3: 3rd loop","fc",length(fc),"cluster",cluster.size-1,"range",range, "start coords:",start_coords[1],start_coords[2],"std_c1",std_c1))
@@ -117,16 +119,23 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
          if( all(start<=1) & any(contiguity + add_sd1==0) ) break("Mean<=1 and SD==0; impossible to draw values from rtnorm")
 
            start_coords <- round(rtnorm(2, mean=as.numeric(start), sd=contiguity + add_sd1, lower=1, upper=min(dim(x))+1),0)
-       }
-
-       cells_selected <- matrix_start_coords[(start_coords[1]-range):(start_coords[1]+range),(start_coords[2]-range):(start_coords[2]+range)] #Neighborhood cell_selected
-       cells_selected<-cells_selected[cells_selected>0]
+#
+##Check if the new start is still inside
+#
+         if ( any((start_coords+range)>500) | any((start_coords-range)<=0) ) {
+          message("Coords out of matrix boundaries; bringing them back inside...")
+          if( any((start_coords+range)>500) ) start_coords[(start_coords+range)>500] <- ncol(x)/2
+          if( any((start_coords-range)<=0) ) start_coords[(start_coords-range)<=0] <- ncol(x)/2
+        }
+      }
+      cells_selected <- matrix_start_coords[(start_coords[1]-range):(start_coords[1]+range),(start_coords[2]-range):(start_coords[2]+range)] #Neighborhood cell_selected
+      cells_selected<-cells_selected[cells_selected>0]
 #
 #If range>0 randomly pick a seed cell in the neighborhood set
 #
-       if( length(cells_selected)==0 ) cells_selected<-0;
+      if( length(cells_selected)==0 ) cells_selected<-0;
 
-       if( length(cells_selected)>1 ){
+      if( length(cells_selected)>1 ){
         cells_selected<- sample(cells_selected, 1)
         start_coords<-which(cells_selected==matrix_start_coords,arr.ind=T)
       }
@@ -196,8 +205,7 @@ multiexpand <- function(x, cluster.number, cluster.size, cluster.size.prob=0, st
   return (n)
 }
 #
-# Select one available cell uniformly at random.
-# Return an updated state.
+## Select one available cell uniformly at random.  Return an updated state.
 #
 if( mode=="ca" ){
 
@@ -226,7 +234,7 @@ if( mode=="px" ){
 
 state <- list(available=cells_selected, occupied=busy_cells)
 #
-# Grow for as long as possible and as long as needed.
+##Grow for as long as possible and as long as needed.
 #
 a <- 1
 indices.c <- c(NA, cluster.size)
@@ -245,14 +253,14 @@ while( length(state$available) >= 1 && a <= cluster.size ) {
   }
 }
 #
-# Return a grid of generation numbers from 1, 2, ... through cluster.size.
+##Return a grid of generation numbers from 1, 2, ... through cluster.size.
 #
 indices.c <- indices.c[!is.na(indices.c)]
 y <- matrix(NA, n.rows, n.cols)
 y[indices.c] <- 1:length(indices.c)
 
 #
-# If not syn growth set then check if the cluster respects cluster.size
+##If not syn growth set then check if the cluster respects cluster.size
 #
 if(xnnoise==0 & ynnoise==0){
   if ( length(y[!is.na(y)])==cluster.size ) {
@@ -276,7 +284,7 @@ if(xnnoise==0 & ynnoise==0){
   cat(paste(i-2,"cluster(s) created. Cluster size=",length(y[!is.na(y)]),"x=",start_coords[1],"y=",start_coords[2],length(which(cells.left>0)),"cells unoccupied \n", sep=" "))
 }
 #
-#Check if the left cells are enough for the next cluster
+##Check if the left cells are enough for the next cluster
 #
 if( length(which(cells.left!=-1))<=cluster.size ) {
   break(paste("Unoccupied cells are not enough","only",i-2,"cluster(s) created out of",cluster.size,"\n",sep=" "))

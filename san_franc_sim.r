@@ -2,42 +2,42 @@
 n.rows <- 500
 n.cols <- 500
 mm <- matrix(1, 500, 500)
-
-#Add landscape shapes
-#Roads and river
+#
+##Major roads/river
+#
 mm1<-roadsim(mm,n.rows,n.cols,-999,method="row")
 mm2<-roadsim(mm1,n.rows,n.cols,-999,method="row",sl=2.5,fr=0.6,scaling=0.1)
-mm3<-roadsim(mm2,n.cols,n.rows,-999,method="column")
-mm4<-roadsim(mm3,n.cols,n.rows,-999,method="column",sl=-3.1,fr=-4.8,scaling=0.8)
-mm5<-roadsim(mm4,n.cols,n.rows,-1,method="row",sl=0,fr=1,scaling=0.3,increase=5)
-
-# mm4<-roadsim(mm3,n.cols,n.rows,rvalue=-1,method="column",sl=-0.5,fr=5,scaling=0.5,increase=10)
-
-#Add secondary roads
-mm6 <- multiexpand(mm5,100,1000,0,c(n.rows/2,n.cols/2),10000,100,c(50,50),"px",nbr.matrix="nn2x",xnnoise=0,along=TRUE,along.value=-999)
+# mm3<-roadsim(mm2,n.cols,n.rows,-999,method="column")
+mm4<-roadsim(mm2,n.cols,n.rows,-999,method="column",sl=-3.1,fr=-4.8,scaling=0.8)
+mm5<-roadsim(mm4,n.cols,n.rows,-1,method="row",sl=0,fr=1,scaling=0.3,increase=1)
+#
+##Secondary roads
+#
+mm6 <- multiexpand(mm5,3,500,0,c(n.rows/2,n.cols/2),10000,100,c(50,50),"px",nbr.matrix="nn2x",xnnoise=0,along=TRUE,along.value=-999)
 
 mm7 <- matrix(1, n.rows, n.cols)
 mm7[mm5 == -999 | mm6 > 2] <- -999
 mm7[mm5 == -1 ] <- -1
 
-mm7b <- multiexpand(mm7,100,1000,0,c(n.rows/2,n.cols/2),10000,100,c(50,50),"px",nbr.matrix="nn2y",ynnoise=0, along=TRUE,along.value=-999)
+mm7b <- multiexpand(mm7,3,500,0,c(n.rows/2,n.cols/2),10000,100,c(50,50),"px",nbr.matrix="nn2y",ynnoise=0, along=TRUE,along.value=-999)
 
 mm7c <- matrix(1, n.rows, n.cols)
 mm7c[mm5 == -999 ] <- -999
 mm7c[mm5 == -1 | mm6 >2 | mm7b > 2] <- -1
 
-mm7d <- multiexpand(mm7c,200,1000,0,c(n.rows/2,n.cols/2),10000,100,c(100,100),"px",nbr.matrix="nn2x",xnnoise=-1,along=TRUE,along.value=-999)
+mm7d <- multiexpand(mm7c,3,500,0,c(n.rows/2,n.cols/2),10000,100,c(100,100),"px",nbr.matrix="nn2x",xnnoise=-1,along=TRUE,along.value=-999)
 
 mm7e <- matrix(1, n.rows, n.cols)
 mm7e[mm7d > 2 ] <- -999
 mm7e[mm5 == -999 | mm7c == -1] <- -1
 
-mm8 <- multiexpand(mm7e,200,1000,0,c(n.rows/2,n.cols/2),10000,50,c(50,50),"px",nbr.matrix="nn2y",ynnoise=-1,along=TRUE,along.value=-999)
+mm8 <- multiexpand(mm7e,3,500,0,c(n.rows/2,n.cols/2),10000,50,c(50,50),"px",nbr.matrix="nn2y",ynnoise=-1,along=TRUE,along.value=-999)
 
 mm9 <- matrix(1, n.rows, n.cols)
 mm9[mm7e == -1 | mm7e == -999 | mm8 > 2] <- -1
-
+#
 #Big public green areas
+#
 green_park<-multiexpand(mm9,50,cluster.size=350,350,c(n.rows/2,n.cols/2),50000,200,c(5000,5000),mode="ca",ww=16)
 
 mm9bis <- matrix(1, n.rows, n.cols)
